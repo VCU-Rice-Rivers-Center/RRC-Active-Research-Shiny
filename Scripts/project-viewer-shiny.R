@@ -38,10 +38,12 @@ server <- function(input, output) {
   
   output$map <- renderLeaflet({
     leaflet() |>
-      addTiles() |>
+      addProviderTiles(providers$Esri.WorldImagery) |>
       fitBounds(aoi_bbox[1], aoi_bbox[2], aoi_bbox[3], aoi_bbox[4]) |>
-      addMarkers(data = projects_sf) |>
-      addPolygons(data = aoi_sf, fillOpacity = 0)
+      addPolygons(data = aoi_sf, color = "#006894", opacity = 0.8, fillOpacity = 0) |>
+      addCircleMarkers(data = projects_sf, color = "#FFB300", stroke = TRUE, opacity=0.9, fillOpacity = 0.3,
+                       label = ~as.character(projectTitle)) 
+      
   })
   
 }
