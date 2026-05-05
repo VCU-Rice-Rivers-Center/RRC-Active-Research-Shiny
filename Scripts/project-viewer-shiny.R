@@ -36,16 +36,43 @@ ui <- page_fluid(
 
 server <- function(input, output) {
   
+  # Create the map
   output$map <- renderLeaflet({
     leaflet() |>
       addProviderTiles(providers$Esri.WorldImagery) |>
       fitBounds(aoi_bbox[1], aoi_bbox[2], aoi_bbox[3], aoi_bbox[4]) |>
-      addPolygons(data = aoi_sf, color = "#006894", opacity = 0.8, fillOpacity = 0) |>
-      addCircleMarkers(data = projects_sf, color = "#FFB300", stroke = TRUE, opacity=0.9, fillOpacity = 0.3,
-                       label = ~as.character(projectTitle)) 
+      addPolygons(data = aoi_sf, color = "#006894", opacity = 0.8, fillOpacity = 0) 
       
   })
   
+  # This observer is responsible for maintaining the markers
+  observe({
+    leafletProxy("map", data = projects_sf) |>
+      addCircleMarkers(data = projects_sf, layerId = ~globalid, color = "#FFB300", stroke = TRUE, opacity=0.9, fillOpacity = 0.3) 
+  })
+  
+  # Show a popup at a given location
+  showPopup <- function(project, lat, lng) {
+    selectedProject <- projects_sf[projects_sf$globalid == project,]
+    content <- as.character(tagList(
+      tags$h4("Project Title:", as.character(selectedProject$projectTitle)),
+      sprintf("PI: %s", as.character(selectedProject$projectLead))
+    ))
+    leafletProxy("map") |>
+      addPopups(lng, lat, content, layerId = project)
+  }
+  
+  observe({
+    leafletProxy("map") |>
+      clearPopups()
+    event <- input$map_marker_click
+    if (is.null(event))
+      return()
+    
+    isolate({
+      showPopup(event$id, event$lat, event$lng)
+    })
+  })
 }
 
 shinyApp(ui = ui, server = server)
