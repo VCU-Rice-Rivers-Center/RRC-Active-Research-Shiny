@@ -27,9 +27,34 @@ aoi_sf <- st_read(aoi_url) |>
 aoi_bbox <- st_bbox(aoi_sf) |>
   as.vector()
 
+# Prepare UI inputs
+formatTopicsList <- function(projects) {
+  # Pull topics entered for existing projects
+  topics <- unlist(lapply(projects$topics, function(x) { unlist(strsplit(x, ",")) }))
+  topicsOther <- unlist(lapply(projects$topics_other, function(x) { unlist(strsplit(x, ",")) }))
+  
+  # Combine columns and format strings to user-facing 
+  topicsCombined <- unique(c(topics, topicsOther))
+  topicsCombined <- unlist(lapply(topicsCombined, function(x) { str_to_title(gsub('([[:upper:]])', ' \\1', x)) }))
+  
+  # Remove 'NA' and 'Other' from selection
+  topicsCombined <- topicsCombined[!topicsCombined %in% c(NA, "Other")]
+  
+  return(topicsCombined)
+}
+
+
 ### Shiny UI ###
 
-ui <- page_fluid(
+
+ui <- page_sidebar(
+  title = "Rice Rivers Center - Project Viewer",
+  
+  sidebar = sidebar(
+    title = "Map Filters",
+    selectInput(inputId = "selectTopics", label = "Filter by Topics: ",
+                   choices = formatTopicsList(projects_sf), multiple = TRUE)
+  ),
   
   leafletOutput("map")
   
@@ -71,7 +96,7 @@ server <- function(input, output) {
     
     currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
     
-    status <- ifelse((startYear <= currentYear) && (currentYear <= endYear), "Active", "Inactive")
+    status <- ifelse((startYear <= currentYear) && (currentYear <= endYear), "In Progress", "Completed")
     return(status)
   }
   
