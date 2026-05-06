@@ -38,9 +38,24 @@ formatTopicsList <- function(projects) {
   topicsCombined <- unlist(lapply(topicsCombined, function(x) { str_to_title(gsub('([[:upper:]])', ' \\1', x)) }))
   
   # Remove 'NA' and 'Other' from selection
-  topicsCombined <- topicsCombined[!topicsCombined %in% c(NA, "Other")]
+  topicsCombined <- sort(topicsCombined[!topicsCombined %in% c(NA, "Other")])
   
   return(topicsCombined)
+}
+
+formatPIList <- function(projects) {
+  # Pull project leads entered for existing projects
+  leads <- projects$projectLead
+  leadsOther <- projects$projectLead_other
+  
+  # Combine columns and format strings to user-facing
+  leadsCombined <- unique(c(leads, leadsOther))
+  leadsCombined <- unlist(lapply(leadsCombined, function(x) { str_to_title(gsub('([[:upper:]])', ' \\1', x)) }))
+  
+  # Remove 'NA' and 'Other' from selection
+  leadsCombined <- sort(leadsCombined[!leadsCombined %in% c(NA, "Other")])
+  
+  return(leadsCombined)
 }
 
 
@@ -53,7 +68,12 @@ ui <- page_sidebar(
   sidebar = sidebar(
     title = "Map Filters",
     selectInput(inputId = "selectTopics", label = "Filter by Topics: ",
-                   choices = formatTopicsList(projects_sf), multiple = TRUE)
+                   choices = formatTopicsList(projects_sf), multiple = TRUE),
+    selectInput(inputId = "selectPI", label = "Filter by PI: ", 
+                    choices = formatPIList(projects_sf), multiple = TRUE),
+    selectInput(inputId = "selectStatus", label = "Filter by Status: ",
+                    choices = c("In Progress", "Complete", "Any Status"),
+                    selected = "Any Status")
   ),
   
   leafletOutput("map")
@@ -96,7 +116,7 @@ server <- function(input, output) {
     
     currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
     
-    status <- ifelse((startYear <= currentYear) && (currentYear <= endYear), "In Progress", "Completed")
+    status <- ifelse((startYear <= currentYear) && (currentYear <= endYear), "In Progress", "Complete")
     return(status)
   }
   
