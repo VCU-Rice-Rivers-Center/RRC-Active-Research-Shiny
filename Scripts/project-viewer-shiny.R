@@ -76,7 +76,8 @@ ui <- page_sidebar(
                     selected = "Any Status")
   ),
   
-  leafletOutput("map")
+  card(leafletOutput("map")), 
+  card(uiOutput(outputId = "projectDetails"))
   
 )
 
@@ -96,6 +97,19 @@ server <- function(input, output) {
     leafletProxy("map", data = projects_sf) |>
       addCircleMarkers(data = projects_sf, layerId = ~globalid, color = "#FFB300", stroke = TRUE, opacity=0.9, fillOpacity = 0.3) 
   })
+  
+  output$projectDetails <- renderUI({
+    event <- input$map_marker_click
+    
+    if (is.null(event)) {
+      return(p("Click a marker to see details."))
+    }
+    
+    # 'event' is a list containing lat, lng, and id
+    # Best practice: use the id to pull specific data from your source
+    p(paste("You clicked on project:", event$id))
+  })
+  
   
   # Functions for formatting popup
   # Format project lead name
@@ -137,7 +151,7 @@ server <- function(input, output) {
   observe({
     leafletProxy("map") |>
       clearPopups()
-    event <- input$map_marker_click
+    event <- input$map_marker_mouseover
     if (is.null(event))
       return()
     
@@ -145,6 +159,9 @@ server <- function(input, output) {
       showPopup(event$id, event$lat, event$lng)
     })
   })
+  
+  
+  
 }
 
 shinyApp(ui = ui, server = server)
