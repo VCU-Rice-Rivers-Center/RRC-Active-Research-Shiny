@@ -98,8 +98,15 @@ server <- function(input, output) {
       addCircleMarkers(data = projects_sf, layerId = ~globalid, color = "#FFB300", stroke = TRUE, opacity=0.9, fillOpacity = 0.3) 
   })
   
+  observeEvent(input$map_marker_click, {
+    projectSelection <- input$map_marker_click
+    print(projectSelection$id)
+  })
+  
+
   output$projectDetails <- renderUI({
     event <- input$map_marker_click
+    print(event)
     
     if (is.null(event)) {
       return(p("Click a marker to see details."))
@@ -154,7 +161,7 @@ server <- function(input, output) {
     event <- input$map_marker_mouseover
     if (is.null(event))
       return()
-    
+
     isolate({
       showPopup(event$id, event$lat, event$lng)
     })
