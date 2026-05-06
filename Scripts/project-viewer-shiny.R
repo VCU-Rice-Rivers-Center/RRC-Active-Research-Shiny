@@ -4,6 +4,7 @@ library(sf)
 library(shiny)
 library(leaflet)
 library(bslib)
+library(stringr)
 
 ### Initialization ###
 
@@ -51,12 +52,29 @@ server <- function(input, output) {
       addCircleMarkers(data = projects_sf, layerId = ~globalid, color = "#FFB300", stroke = TRUE, opacity=0.9, fillOpacity = 0.3) 
   })
   
+  # Functions for formatting popup
+  formatProjectLead <- function(project) {
+    
+    lead <- project$projectLead
+    
+    if (lead == "other") {
+      lead <- project$projectLead_other # Free text parameter
+    } else {
+      lead <- gsub('([[:upper:]])', ' \\1', lead) # Str split at uppercase
+    }
+    
+    return(str_to_title(lead)) # Return name, formatted as a title
+    
+  }
+  
   # Show a popup at a given location
   showPopup <- function(project, lat, lng) {
     selectedProject <- projects_sf[projects_sf$globalid == project,]
     content <- as.character(tagList(
-      tags$h4("Project Title:", as.character(selectedProject$projectTitle)),
-      sprintf("PI: %s", as.character(selectedProject$projectLead))
+      tags$strong("Project Title: "),
+      p(str_to_title(as.character(selectedProject$projectTitle))), tags$br(),
+      tags$strong("Principle Investigator: "),
+      p(as.character(formatProjectLead(selectedProject))), tags$br()
     ))
     leafletProxy("map") |>
       addPopups(lng, lat, content, layerId = project)
