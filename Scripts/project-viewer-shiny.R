@@ -53,28 +53,37 @@ server <- function(input, output) {
   })
   
   # Functions for formatting popup
+  # Format project lead name
   formatProjectLead <- function(project) {
-    
     lead <- project$projectLead
-    
     if (lead == "other") {
       lead <- project$projectLead_other # Free text parameter
     } else {
       lead <- gsub('([[:upper:]])', ' \\1', lead) # Str split at uppercase
     }
-    
     return(str_to_title(lead)) # Return name, formatted as a title
+  }
+  
+  # Format status (active vs. inactive)
+  formatStatus <- function(project) {
+    startYear <- as.numeric(project$yearStart) # Project start year
+    endYear <- as.numeric(project$yearEnd) # Project end year
     
+    currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
+    
+    status <- ifelse((startYear <= currentYear) && (currentYear <= endYear), "Active", "Inactive")
+    return(status)
   }
   
   # Show a popup at a given location
   showPopup <- function(project, lat, lng) {
     selectedProject <- projects_sf[projects_sf$globalid == project,]
     content <- as.character(tagList(
-      tags$strong("Project Title: "),
-      p(str_to_title(as.character(selectedProject$projectTitle))), tags$br(),
-      tags$strong("Principle Investigator: "),
-      p(as.character(formatProjectLead(selectedProject))), tags$br()
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Title: "), str_to_title(as.character(selectedProject$projectTitle)), sep = "")),
+      tags$br(),
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(selectedProject)))),
+      tags$br(),
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(selectedProject))))
     ))
     leafletProxy("map") |>
       addPopups(lng, lat, content, layerId = project)
