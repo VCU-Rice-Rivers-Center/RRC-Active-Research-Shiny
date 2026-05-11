@@ -76,7 +76,7 @@ ui <- page_sidebar(
                     selected = "Any Status")
   ),
   
-  card(leafletOutput("map")), 
+  card(leafletOutput("mymap")), 
   card(uiOutput(outputId = "projectDetails"))
   
 )
@@ -84,7 +84,7 @@ ui <- page_sidebar(
 server <- function(input, output) {
   
   # Create the map
-  output$map <- renderLeaflet({
+  output$mymap <- renderLeaflet({
     leaflet() |>
       addProviderTiles(providers$Esri.WorldImagery) |>
       fitBounds(aoi_bbox[1], aoi_bbox[2], aoi_bbox[3], aoi_bbox[4]) |>
@@ -94,18 +94,12 @@ server <- function(input, output) {
   
   # This observer is responsible for maintaining the markers
   observe({
-    leafletProxy("map", data = projects_sf) |>
+    leafletProxy("mymap", data = projects_sf) |>
       addCircleMarkers(data = projects_sf, layerId = ~globalid, color = "#FFB300", stroke = TRUE, opacity=0.9, fillOpacity = 0.3) 
   })
-  
-  observeEvent(input$map_marker_click, {
-    projectSelection <- input$map_marker_click
-    print(projectSelection$id)
-  })
-  
 
   output$projectDetails <- renderUI({
-    event <- input$map_marker_click
+    event <- input$mymap_marker_click
     print(event)
     
     if (is.null(event)) {
@@ -141,9 +135,24 @@ server <- function(input, output) {
     return(status)
   }
   
-  # Show a popup at a given location
-  showPopup <- function(project, lat, lng) {
-    selectedProject <- projects_sf[projects_sf$globalid == project,]
+  # When circle is clicked, print info
+  observeEvent(input$mymap_marker_click, {
+    projectSelection <- input$mymap_marker_click
+    print(projectSelection$id)
+  })
+  
+  # When circle is passed over, clear popup
+  observeEvent(input$mymap_marker_mouseout$id, {
+    leafletProxy("mymap") %>% clearPopups()
+  })
+  
+  # When circle is hovered overshow a popup
+  observeEvent(input$mymap_marker_mouseover$id, {
+    selectedProject <- projects_sf[projects_sf$globalid == input$mymap_marker_mouseover$id,]
+    lat <- input$mymap_marker_mouseover$lat
+    lng <- input$mymap_marker_mouseover$lng
+    offset = isolate((input$mymap_bounds$north - input$mymap_bounds$south) / (23 + 10 + (18 - input$mymap_zoom)^2 ))
+    
     content <- as.character(tagList(
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Title: "), str_to_title(as.character(selectedProject$projectTitle)), sep = "")),
       tags$br(),
@@ -151,23 +160,10 @@ server <- function(input, output) {
       tags$br(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(selectedProject))))
     ))
-    leafletProxy("map") |>
-      addPopups(lng, lat, content, layerId = project)
-  }
-  
-  observe({
-    leafletProxy("map") |>
-      clearPopups()
-    event <- input$map_marker_mouseover
-    if (is.null(event))
-      return()
 
-    isolate({
-      showPopup(event$id, event$lat, event$lng)
-    })
+    leafletProxy("mymap") %>% addPopups(lat = lat + offset, lng = lng, content)
   })
-  
-  
+
   
 }
 
