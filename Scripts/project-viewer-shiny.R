@@ -5,6 +5,7 @@ library(shiny)
 library(leaflet)
 library(bslib)
 library(stringr)
+library(htmltools)
 
 ### Initialization ###
 
@@ -98,17 +99,27 @@ server <- function(input, output) {
       addCircleMarkers(data = projects_sf, layerId = ~globalid, color = "#FFB300", stroke = TRUE, opacity=0.9, fillOpacity = 0.3) 
   })
 
+  # UI output for project details
   output$projectDetails <- renderUI({
-    event <- input$mymap_marker_click
-    print(event)
+    selectedProject <- projects_sf[projects_sf$globalid == input$mymap_marker_click$id,]
     
-    if (is.null(event)) {
+    if (nrow(selectedProject) == 0) {
       return(p("Click a marker to see details."))
     }
     
-    # 'event' is a list containing lat, lng, and id
-    # Best practice: use the id to pull specific data from your source
-    p(paste("You clicked on project:", event$id))
+    content <- tagList(
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Title: "), str_to_title(as.character(selectedProject$projectTitle)), sep = "")),
+      tags$br(),
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(selectedProject)))),
+      tags$br(),
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(selectedProject)))),
+      tags$br(),
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Objectives: "), selectedProject$projectObjectives)),
+      tags$br(),
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Methods: "), selectedProject$projectMethods))
+    )
+    
+    p(content)
   })
   
   
@@ -134,12 +145,6 @@ server <- function(input, output) {
     status <- ifelse((startYear <= currentYear) && (currentYear <= endYear), "In Progress", "Complete")
     return(status)
   }
-  
-  # When circle is clicked, print info
-  observeEvent(input$mymap_marker_click, {
-    projectSelection <- input$mymap_marker_click
-    print(projectSelection$id)
-  })
   
   # When circle is passed over, clear popup
   observeEvent(input$mymap_marker_mouseout$id, {
