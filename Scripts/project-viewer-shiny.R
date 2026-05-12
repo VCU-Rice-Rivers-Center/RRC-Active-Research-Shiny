@@ -33,6 +33,7 @@ formatTopicsList <- function(projects) {
   # Pull topics entered for existing projects
   topics <- unlist(lapply(projects$topics, function(x) { unlist(strsplit(x, ",")) }))
   topicsOther <- unlist(lapply(projects$topics_other, function(x) { unlist(strsplit(x, ",")) }))
+  topicsOther <- unlist(lapply(topicsOther, function(x) { ifelse(str_count(x, " ") > 3, NA, x) }))
   
   # Combine columns and format strings to user-facing 
   topicsCombined <- unique(c(topics, topicsOther))
@@ -118,7 +119,7 @@ server <- function(input, output) {
           style = list(
             "font-weight" = "normal", 
             "padding" = "8px",
-            "width" = "800px",      # Limits the width of the label
+            "width" = "320px",      # Limits the width of the label
             "white-space" = "normal",   # Allows text to wrap to the next line
             "word-wrap" = "break-word"  # Ensures long words don't overflow
           ),
