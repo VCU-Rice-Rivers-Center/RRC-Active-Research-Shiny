@@ -93,10 +93,33 @@ server <- function(input, output) {
       
   })
   
-  # This observer is responsible for maintaining the markers
+  # This observer is responsible for maintaining the markers + labels
   observe({
+    # Pre-calculate the labels for each point
+    labels <- lapply(seq_len(nrow(projects_sf)), function(i) {
+      project <- projects_sf[i, ]
+      HTML(paste(
+        tags$span(style="color:#006894;font-weight:bold", "Project Title: "), str_to_title(as.character(project$projectTitle)), "<br/>",
+        tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(project)), "<br/>",
+        tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(project))
+      ))
+    })
+    
     leafletProxy("mymap", data = projects_sf) |>
-      addCircleMarkers(data = projects_sf, layerId = ~globalid, color = "#FFB300", stroke = TRUE, opacity=0.9, fillOpacity = 0.3) 
+      clearMarkers() |> # Good practice to clear before re-adding in an observer
+      addCircleMarkers(
+        layerId = ~globalid, 
+        color = "#FFB300", 
+        stroke = TRUE, 
+        opacity = 0.9, 
+        fillOpacity = 0.3,
+        label = labels, # Add the labels here
+        labelOptions = labelOptions(
+          style = list("font-weight" = "normal", padding = "3px 8px"),
+          textsize = "13px",
+          direction = "auto"
+        )
+      )
   })
 
   # UI output for project details
@@ -108,8 +131,8 @@ server <- function(input, output) {
     }
     
     content <- tagList(
-      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Title: "), str_to_title(as.character(selectedProject$projectTitle)), sep = "")),
-      tags$br(),
+      tags$h3(str_to_title(as.character(selectedProject$projectTitle))),
+      tags$hr(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(selectedProject)))),
       tags$br(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(selectedProject)))),
@@ -145,31 +168,7 @@ server <- function(input, output) {
     status <- ifelse((startYear <= currentYear) && (currentYear <= endYear), "In Progress", "Complete")
     return(status)
   }
-  
-  # When circle is passed over, clear popup
-  observeEvent(input$mymap_marker_mouseout$id, {
-    leafletProxy("mymap") %>% clearPopups()
-  })
-  
-  # When circle is hovered overshow a popup
-  observeEvent(input$mymap_marker_mouseover$id, {
-    selectedProject <- projects_sf[projects_sf$globalid == input$mymap_marker_mouseover$id,]
-    lat <- input$mymap_marker_mouseover$lat
-    lng <- input$mymap_marker_mouseover$lng
-    offset = isolate((input$mymap_bounds$north - input$mymap_bounds$south) / (23 + 10 + (18 - input$mymap_zoom)^2 ))
-    
-    content <- as.character(tagList(
-      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Title: "), str_to_title(as.character(selectedProject$projectTitle)), sep = "")),
-      tags$br(),
-      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(selectedProject)))),
-      tags$br(),
-      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(selectedProject))))
-    ))
 
-    leafletProxy("mymap") %>% addPopups(lat = lat + offset, lng = lng, content)
-  })
-
-  
 }
 
 shinyApp(ui = ui, server = server)
