@@ -115,7 +115,13 @@ server <- function(input, output) {
         fillOpacity = 0.3,
         label = labels, # Add the labels here
         labelOptions = labelOptions(
-          style = list("font-weight" = "normal", padding = "3px 8px"),
+          style = list(
+            "font-weight" = "normal", 
+            "padding" = "8px",
+            "width" = "800px",      # Limits the width of the label
+            "white-space" = "normal",   # Allows text to wrap to the next line
+            "word-wrap" = "break-word"  # Ensures long words don't overflow
+          ),
           textsize = "13px",
           direction = "auto"
         )
