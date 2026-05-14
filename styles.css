@@ -12,11 +12,12 @@ div.outer {
   padding: 0;
 }
 
+/* Get a fancy font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
+
 /* Customize fonts */
-body, label, input, button, select { 
-  font-family: 'Helvetica Neue', Helvetica;
-  font-weight: 200;
-}
+* { font-family: Roboto; }
+
 h1, h2, h3 { 
   font-weight: 400; 
   color: #006894;
