@@ -93,6 +93,29 @@ formatProjectAssociates <- function(project) {
   }
 }
 
+formatTopics <- function(project) {
+  # Pull topics entered for existing projects
+  topics <- unlist(lapply(project$topics, function(x) { unlist(strsplit(x, ",")) }))
+  topicsOther <- unlist(lapply(project$topics_other, function(x) { unlist(strsplit(x, ",")) }))
+  topicsOther <- unlist(lapply(topicsOther, function(x) { ifelse(str_count(x, " ") > 3, NA, x) }))
+  
+  # Combine columns and format strings to user-facing 
+  topicsCombined <- unique(c(topics, topicsOther))
+  topicsCombined <- unlist(lapply(topicsCombined, function(x) { str_to_title(gsub('([[:upper:]])', ' \\1', x)) }))
+  
+  # Remove 'NA' and 'Other' from selection
+  topicsCombined <- sort(topicsCombined[!topicsCombined %in% c(NA, "Other")])
+  
+  # Format character string
+  if (length(topicsCombined) == 0) {
+    return("NA")
+  } else {
+    return(paste(str_to_title(as.character(topicsCombined)), collapse=", "))
+  }
+  
+  return(topicsCombined)
+}
+
 # Format status (active vs. inactive)
 formatStatus <- function(project) {
   startYear <- as.numeric(project$yearStart) # Project start year
@@ -202,15 +225,22 @@ server <- function(input, output) {
     content <- tagList(
       tags$h4(str_to_title(as.character(selectedProject$projectTitle))),
       tags$hr(),
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Topics: "), as.character(formatTopics(selectedProject)))),
+      tags$br(),
+      tags$br(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(selectedProject)))),
+      tags$br(),
       tags$br(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Associates: "), as.character(formatProjectAssociates(selectedProject)))),
       tags$br(),
-      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(selectedProject)))),
       tags$br(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Objectives: "), selectedProject$projectObjectives)),
       tags$br(),
-      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Methods: "), selectedProject$projectMethods))
+      tags$br(),
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Methods: "), selectedProject$projectMethods)),
+      tags$br(),
+      tags$br(),
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(selectedProject))))
     )
     
     p(content)
