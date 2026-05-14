@@ -6,6 +6,7 @@ library(leaflet)
 library(bslib)
 library(stringr)
 library(htmltools)
+library(rsconnect)
 
 ### Initialization ###
 
@@ -20,7 +21,7 @@ projects <- get_layer(f_layer, id=0)
 projects_sf <- arc_select(projects)
 
 # RRC Boundary File
-aoi_url <- "Data/RRC-Boundary/RRC_ROI.shp"
+aoi_url <- "data/RRC_ROI.shp"
 aoi_sf <- st_read(aoi_url) |>
   st_transform(crs = 4326)
 
