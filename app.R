@@ -79,9 +79,23 @@ ui <- page_sidebar(
                     selected = "Any Status")
   ),
   
-  card(leafletOutput("mymap")), 
-  card(uiOutput(outputId = "projectDetails"))
-  
+  div(
+      
+      tags$head(
+        # Include our custom CSS
+        includeCSS("styles.css")
+      ),
+      
+  leafletOutput("mymap"), 
+  absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
+                draggable = TRUE, top = 60, left = "auto", right = 20, bottom = "auto",
+                width = 330, height = "auto",
+                
+                h2("Project Details"),
+                
+                uiOutput(outputId= "projectDetails")
+  )
+  )
 )
 
 server <- function(input, output) {
