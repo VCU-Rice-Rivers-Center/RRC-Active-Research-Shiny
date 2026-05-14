@@ -86,10 +86,11 @@ ui <- page_sidebar(
         includeCSS("styles.css")
       ),
       
+  tags$style(type = "text/css", "#mymap {height: calc(100vh - 80px) !important;}"),
   leafletOutput("mymap"), 
   absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
-                draggable = TRUE, top = 60, left = "auto", right = 20, bottom = "auto",
-                width = 330, height = "auto",
+                draggable = TRUE, top = 120, left = "auto", right = 70, bottom = "auto",
+                width = 400, height = "80%",
                 
                 h2("Project Details"),
                 
@@ -104,7 +105,7 @@ server <- function(input, output) {
   output$mymap <- renderLeaflet({
     leaflet() |>
       addProviderTiles(providers$Esri.WorldImagery) |>
-      fitBounds(aoi_bbox[1], aoi_bbox[2], aoi_bbox[3], aoi_bbox[4]) |>
+      fitBounds(aoi_bbox[1] - 0.005, aoi_bbox[2], aoi_bbox[3] -0.005, aoi_bbox[4]) |>
       addPolygons(data = aoi_sf, color = "#006894", opacity = 0.8, fillOpacity = 0) 
       
   })
@@ -153,7 +154,7 @@ server <- function(input, output) {
     }
     
     content <- tagList(
-      tags$h3(str_to_title(as.character(selectedProject$projectTitle))),
+      tags$h4(str_to_title(as.character(selectedProject$projectTitle))),
       tags$hr(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(selectedProject)))),
       tags$br(),
