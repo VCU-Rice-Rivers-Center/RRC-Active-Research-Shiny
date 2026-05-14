@@ -101,11 +101,14 @@ ui <- page_sidebar(
 
 server <- function(input, output) {
   
+  # Offset for map
+  bbox_offset = 0.005
+  
   # Create the map
   output$mymap <- renderLeaflet({
     leaflet() |>
       addProviderTiles(providers$Esri.WorldImagery) |>
-      fitBounds(aoi_bbox[1] - 0.005, aoi_bbox[2], aoi_bbox[3] -0.005, aoi_bbox[4]) |>
+      fitBounds(aoi_bbox[1] + bbox_offset, aoi_bbox[2], aoi_bbox[3] + bbox_offset, aoi_bbox[4]) |>
       addPolygons(data = aoi_sf, color = "#006894", opacity = 0.8, fillOpacity = 0) 
       
   })
@@ -158,6 +161,8 @@ server <- function(input, output) {
       tags$hr(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(selectedProject)))),
       tags$br(),
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Associates: "), as.character(formatProjectAssociates(selectedProject)))),
+      tags$br(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(selectedProject)))),
       tags$br(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Objectives: "), selectedProject$projectObjectives)),
@@ -179,6 +184,26 @@ server <- function(input, output) {
       lead <- gsub('([[:upper:]])', ' \\1', lead) # Str split at uppercase
     }
     return(str_to_title(lead)) # Return name, formatted as a title
+  }
+  
+  # Format project associate names
+  formatProjectAssociates <- function(project) {
+    associates <- unlist(lapply(project$projectAssociates, function(x) { unlist(strsplit(x, ",")) }))
+    associatesOther <- unlist(lapply(project$projectAssociates_other, function(x) { unlist(strsplit(x, ",")) }))
+
+    # Combine columns and format strings to user-facing
+    associatesCombined <- unique(c(associates, associatesOther))
+    associatesCombined <- unlist(lapply(associatesCombined, function(x) { gsub('([[:upper:]])', ' \\1', x) }))
+
+    # Remove 'NA' and 'Other' from selection
+    associatesCombined <- sort(associatesCombined[!associatesCombined %in% c(NA, "Other")])
+    
+    # Format character string
+    if (length(associatesCombined) == 0) {
+      return("None")
+    } else {
+      return(paste(str_to_title(as.character(associatesCombined)), collapse=", "))
+    }
   }
   
   # Format status (active vs. inactive)
