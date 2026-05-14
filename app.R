@@ -29,8 +29,8 @@ aoi_sf <- st_read(aoi_url) |>
 aoi_bbox <- st_bbox(aoi_sf) |>
   as.vector()
 
-# Prepare UI inputs
-formatTopicsList <- function(projects) {
+# Functions for formatting UI inputs
+formatTopicsListUI <- function(projects) {
   # Pull topics entered for existing projects
   topics <- unlist(lapply(projects$topics, function(x) { unlist(strsplit(x, ",")) }))
   topicsOther <- unlist(lapply(projects$topics_other, function(x) { unlist(strsplit(x, ",")) }))
@@ -46,7 +46,7 @@ formatTopicsList <- function(projects) {
   return(topicsCombined)
 }
 
-formatPIList <- function(projects) {
+formatPIListUI <- function(projects) {
   # Pull project leads entered for existing projects
   leads <- projects$projectLead
   leadsOther <- projects$projectLead_other
@@ -61,6 +61,72 @@ formatPIList <- function(projects) {
   return(leadsCombined)
 }
 
+# Functions for formatting popup details
+# Format project lead name
+formatProjectLead <- function(project) {
+  lead <- project$projectLead
+  if (lead == "other") {
+    lead <- project$projectLead_other # Free text parameter
+  } else {
+    lead <- gsub('([[:upper:]])', ' \\1', lead) # Str split at uppercase
+  }
+  return(str_to_title(lead)) # Return name, formatted as a title
+}
+
+# Format project associate names
+formatProjectAssociates <- function(project) {
+  associates <- unlist(lapply(project$projectAssociates, function(x) { unlist(strsplit(x, ",")) }))
+  associatesOther <- unlist(lapply(project$projectAssociates_other, function(x) { unlist(strsplit(x, ",")) }))
+  
+  # Combine columns and format strings to user-facing
+  associatesCombined <- unique(c(associates, associatesOther))
+  associatesCombined <- unlist(lapply(associatesCombined, function(x) { gsub('([[:upper:]])', ' \\1', x) }))
+  
+  # Remove 'NA' and 'Other' from selection
+  associatesCombined <- sort(associatesCombined[!associatesCombined %in% c(NA, "Other")])
+  
+  # Format character string
+  if (length(associatesCombined) == 0) {
+    return("None")
+  } else {
+    return(paste(str_to_title(as.character(associatesCombined)), collapse=", "))
+  }
+}
+
+formatTopics <- function(project) {
+  # Pull topics entered for existing projects
+  topics <- unlist(lapply(project$topics, function(x) { unlist(strsplit(x, ",")) }))
+  topicsOther <- unlist(lapply(project$topics_other, function(x) { unlist(strsplit(x, ",")) }))
+  topicsOther <- unlist(lapply(topicsOther, function(x) { ifelse(str_count(x, " ") > 3, NA, x) }))
+  
+  # Combine columns and format strings to user-facing 
+  topicsCombined <- unique(c(topics, topicsOther))
+  topicsCombined <- unlist(lapply(topicsCombined, function(x) { str_to_title(gsub('([[:upper:]])', ' \\1', x)) }))
+  
+  # Remove 'NA' and 'Other' from selection
+  topicsCombined <- sort(topicsCombined[!topicsCombined %in% c(NA, "Other")])
+  
+  # Format character string
+  if (length(topicsCombined) == 0) {
+    return("NA")
+  } else {
+    return(paste(str_to_title(as.character(topicsCombined)), collapse=", "))
+  }
+  
+  return(topicsCombined)
+}
+
+# Format status (active vs. inactive)
+formatStatus <- function(project) {
+  startYear <- as.numeric(project$yearStart) # Project start year
+  endYear <- as.numeric(project$yearEnd) # Project end year
+  
+  currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
+  
+  status <- ifelse((startYear <= currentYear) && (currentYear <= endYear), "In Progress", "Complete")
+  return(status)
+}
+
 
 ### Shiny UI ###
 
@@ -71,26 +137,44 @@ ui <- page_sidebar(
   sidebar = sidebar(
     title = "Map Filters",
     selectInput(inputId = "selectTopics", label = "Filter by Topics: ",
-                   choices = formatTopicsList(projects_sf), multiple = TRUE),
+                   choices = formatTopicsListUI(projects_sf), multiple = TRUE),
     selectInput(inputId = "selectPI", label = "Filter by PI: ", 
-                    choices = formatPIList(projects_sf), multiple = TRUE),
+                    choices = formatPIListUI(projects_sf), multiple = TRUE),
     selectInput(inputId = "selectStatus", label = "Filter by Status: ",
                     choices = c("In Progress", "Complete", "Any Status"),
                     selected = "Any Status")
   ),
   
-  card(leafletOutput("mymap")), 
-  card(uiOutput(outputId = "projectDetails"))
-  
+  div(
+      
+      tags$head(
+        # Include our custom CSS
+        includeCSS("styles.css")
+      ),
+      
+  tags$style(type = "text/css", "#mymap {height: calc(100vh - 80px) !important;}"),
+  leafletOutput("mymap"), 
+  absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
+                draggable = TRUE, top = 120, left = "auto", right = 70, bottom = "auto",
+                width = 400, height = "80%",
+                
+                h2("Project Details"),
+                
+                uiOutput(outputId= "projectDetails")
+  )
+  )
 )
 
 server <- function(input, output) {
+  
+  # Offset for map
+  bbox_offset = 0.005
   
   # Create the map
   output$mymap <- renderLeaflet({
     leaflet() |>
       addProviderTiles(providers$Esri.WorldImagery) |>
-      fitBounds(aoi_bbox[1], aoi_bbox[2], aoi_bbox[3], aoi_bbox[4]) |>
+      fitBounds(aoi_bbox[1] + bbox_offset, aoi_bbox[2], aoi_bbox[3] + bbox_offset, aoi_bbox[4]) |>
       addPolygons(data = aoi_sf, color = "#006894", opacity = 0.8, fillOpacity = 0) 
       
   })
@@ -139,43 +223,28 @@ server <- function(input, output) {
     }
     
     content <- tagList(
-      tags$h3(str_to_title(as.character(selectedProject$projectTitle))),
+      tags$h4(str_to_title(as.character(selectedProject$projectTitle))),
       tags$hr(),
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Topics: "), as.character(formatTopics(selectedProject)))),
+      tags$br(),
+      tags$br(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(selectedProject)))),
       tags$br(),
-      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(selectedProject)))),
+      tags$br(),
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Associates: "), as.character(formatProjectAssociates(selectedProject)))),
+      tags$br(),
       tags$br(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Objectives: "), selectedProject$projectObjectives)),
       tags$br(),
-      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Methods: "), selectedProject$projectMethods))
+      tags$br(),
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Methods: "), selectedProject$projectMethods)),
+      tags$br(),
+      tags$br(),
+      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(selectedProject))))
     )
     
     p(content)
   })
-  
-  
-  # Functions for formatting popup
-  # Format project lead name
-  formatProjectLead <- function(project) {
-    lead <- project$projectLead
-    if (lead == "other") {
-      lead <- project$projectLead_other # Free text parameter
-    } else {
-      lead <- gsub('([[:upper:]])', ' \\1', lead) # Str split at uppercase
-    }
-    return(str_to_title(lead)) # Return name, formatted as a title
-  }
-  
-  # Format status (active vs. inactive)
-  formatStatus <- function(project) {
-    startYear <- as.numeric(project$yearStart) # Project start year
-    endYear <- as.numeric(project$yearEnd) # Project end year
-    
-    currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
-    
-    status <- ifelse((startYear <= currentYear) && (currentYear <= endYear), "In Progress", "Complete")
-    return(status)
-  }
 
 }
 
