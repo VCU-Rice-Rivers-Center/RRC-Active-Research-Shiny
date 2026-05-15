@@ -35,15 +35,19 @@ formatTopicsListUI <- function(projects) {
   topics <- unlist(lapply(projects$topics, function(x) { unlist(strsplit(x, ",")) }))
   topicsOther <- unlist(lapply(projects$topics_other, function(x) { unlist(strsplit(x, ",")) }))
   topicsOther <- unlist(lapply(topicsOther, function(x) { ifelse(str_count(x, " ") > 3, NA, x) }))
-  
+
   # Combine columns and format strings to user-facing 
-  topicsCombined <- unique(c(topics, topicsOther))
-  topicsCombined <- unlist(lapply(topicsCombined, function(x) { str_to_title(gsub('([[:upper:]])', ' \\1', x)) }))
+  topicsCombinedVals <- unique(c(topics, topicsOther))
+  topicsCombined <- unlist(lapply(topicsCombinedVals, function(x) { str_to_title(gsub('([[:upper:]])', ' \\1', x)) }))
+  
+  # Create names list
+  names(topicsCombinedVals) <- topicsCombined
+  print(class(topicsCombinedVals))
   
   # Remove 'NA' and 'Other' from selection
-  topicsCombined <- sort(topicsCombined[!topicsCombined %in% c(NA, "Other")])
+  topicsCombinedVals <- sort(topicsCombinedVals[!topicsCombinedVals %in% c(NA, "Other")])
   
-  return(topicsCombined)
+  return(topicsCombinedVals)
 }
 
 formatPIListUI <- function(projects) {
