@@ -191,6 +191,7 @@ server <- function(input, output) {
     # Read user inputs
     topicFilter <- input$selectTopics
     piFilter <- input$selectPI
+    statusFilter <- input$selectStatus
     
     # Filter projects dataframe based on user input
     if (length(topicFilter > 0)) {
@@ -207,6 +208,15 @@ server <- function(input, output) {
       projects_sf <- rbind(projectsPIFilter, projectsOtherPIFilter)
     }
     
+    if (statusFilter == "In Progress") {
+      # Filter by status
+      currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
+      projects_sf <- projects_sf[(as.numeric(projects_sf$yearStart) <= currentYear & as.numeric(projects_sf$yearEnd) >= currentYear),]
+    } else if (statusFilter == "Complete") {
+      currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
+      projects_sf <- projects_sf[(as.numeric(projects_sf$yearEnd) < currentYear),]
+    }
+    
     # Pre-calculate the labels for each point
     labels <- lapply(seq_len(nrow(projects_sf)), function(i) {
       project <- projects_sf[i, ]
@@ -217,28 +227,35 @@ server <- function(input, output) {
       ))
     })
     
-    
-    leafletProxy("mymap", data = projects_sf) |>
-      clearMarkers() |> # Good practice to clear before re-adding in an observer
-      addCircleMarkers(
-        layerId = ~globalid, 
-        color = "#FFB300", 
-        stroke = TRUE, 
-        opacity = 0.9, 
-        fillOpacity = 0.3,
-        label = labels, # Add the labels here
-        labelOptions = labelOptions(
-          style = list(
-            "font-weight" = "normal", 
-            "padding" = "8px",
-            "width" = "320px",      # Limits the width of the label
-            "white-space" = "normal",   # Allows text to wrap to the next line
-            "word-wrap" = "break-word"  # Ensures long words don't overflow
-          ),
-          textsize = "13px",
-          direction = "auto"
+    print(nrow(projects_sf))
+    if (nrow(projects_sf) > 0) {
+      leafletProxy("mymap", data = projects_sf) |>
+        clearMarkers() |> # Good practice to clear before re-adding in an observer
+        addCircleMarkers(
+          layerId = ~globalid, 
+          color = "#FFB300", 
+          stroke = TRUE, 
+          opacity = 0.9, 
+          fillOpacity = 0.3,
+          label = labels, # Add the labels here
+          labelOptions = labelOptions(
+            style = list(
+              "font-weight" = "normal", 
+              "padding" = "8px",
+              "width" = "320px",      # Limits the width of the label
+              "white-space" = "normal",   # Allows text to wrap to the next line
+              "word-wrap" = "break-word"  # Ensures long words don't overflow
+            ),
+            textsize = "13px",
+            direction = "auto"
+          )
         )
-      )
+    } else {
+      leafletProxy("mymap") |>
+        clearMarkers()
+    }
+    
+  
   })
 
   # UI output for project details
