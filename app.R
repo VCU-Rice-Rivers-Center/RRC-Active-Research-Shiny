@@ -217,18 +217,17 @@ server <- function(input, output) {
       projects_sf <- projects_sf[(as.numeric(projects_sf$yearEnd) < currentYear),]
     }
     
-    # Pre-calculate the labels for each point
-    labels <- lapply(seq_len(nrow(projects_sf)), function(i) {
-      project <- projects_sf[i, ]
-      HTML(paste(
-        tags$span(style="color:#006894;font-weight:bold", "Project Title: "), str_to_title(as.character(project$projectTitle)), "<br/>",
-        tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(project)), "<br/>",
-        tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(project))
-      ))
-    })
-    
-    print(nrow(projects_sf))
     if (nrow(projects_sf) > 0) {
+      # Pre-calculate the labels for each point
+      labels <- lapply(seq_len(nrow(projects_sf)), function(i) {
+        project <- projects_sf[i, ]
+        HTML(paste(
+          tags$span(style="color:#006894;font-weight:bold", "Project Title: "), str_to_title(as.character(project$projectTitle)), "<br/>",
+          tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(project)), "<br/>",
+          tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(project))
+        ))
+      })
+      
       leafletProxy("mymap", data = projects_sf) |>
         clearMarkers() |> # Good practice to clear before re-adding in an observer
         addCircleMarkers(
