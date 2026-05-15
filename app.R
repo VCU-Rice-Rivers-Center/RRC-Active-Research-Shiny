@@ -45,7 +45,7 @@ formatTopicsListUI <- function(projects) {
   print(class(topicsCombinedVals))
   
   # Remove 'NA' and 'Other' from selection
-  topicsCombinedVals <- sort(topicsCombinedVals[!topicsCombinedVals %in% c(NA, "Other")])
+  topicsCombinedVals <- sort(topicsCombinedVals[!topicsCombinedVals %in% c(NA, "other")])
   
   return(topicsCombinedVals)
 }
@@ -185,6 +185,18 @@ server <- function(input, output) {
   
   # This observer is responsible for maintaining the markers + labels
   observe({
+    
+    # Read user inputs
+    topicFilter <- input$selectTopics
+    
+    # Filter projects dataframe based on user input
+    if (length(topicFilter > 0)) {
+      # Filter by topic
+      projectsTopicFilter <- projects_sf[grep(paste(topicFilter, collapse="|"), projects_sf$topics),]
+      projectsOtherTopicFilter <- projects_sf[grep(paste(topicFilter, collapse="|"), projects_sf$topics_other),]
+      projects_sf <- rbind(projectsTopicFilter, projectsOtherTopicFilter)
+    }
+    
     # Pre-calculate the labels for each point
     labels <- lapply(seq_len(nrow(projects_sf)), function(i) {
       project <- projects_sf[i, ]
@@ -194,6 +206,7 @@ server <- function(input, output) {
         tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(project))
       ))
     })
+    
     
     leafletProxy("mymap", data = projects_sf) |>
       clearMarkers() |> # Good practice to clear before re-adding in an observer
