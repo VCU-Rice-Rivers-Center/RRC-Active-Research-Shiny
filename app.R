@@ -40,9 +40,8 @@ formatTopicsListUI <- function(projects) {
   topicsCombinedVals <- unique(c(topics, topicsOther))
   topicsCombined <- unlist(lapply(topicsCombinedVals, function(x) { str_to_title(gsub('([[:upper:]])', ' \\1', x)) }))
   
-  # Create names list
+  # Create named list
   names(topicsCombinedVals) <- topicsCombined
-  print(class(topicsCombinedVals))
   
   # Remove 'NA' and 'Other' from selection
   topicsCombinedVals <- sort(topicsCombinedVals[!topicsCombinedVals %in% c(NA, "other")])
@@ -56,13 +55,16 @@ formatPIListUI <- function(projects) {
   leadsOther <- projects$projectLead_other
   
   # Combine columns and format strings to user-facing
-  leadsCombined <- unique(c(leads, leadsOther))
-  leadsCombined <- unlist(lapply(leadsCombined, function(x) { str_to_title(gsub('([[:upper:]])', ' \\1', x)) }))
+  leadsCombinedVals <- unique(c(leads, leadsOther))
+  leadsCombined <- unlist(lapply(leadsCombinedVals, function(x) { str_to_title(gsub('([[:upper:]])', ' \\1', x)) }))
+  
+  # Create named list
+  names(leadsCombinedVals) <- leadsCombined
   
   # Remove 'NA' and 'Other' from selection
-  leadsCombined <- sort(leadsCombined[!leadsCombined %in% c(NA, "Other")])
+  leadsCombinedVals <- sort(leadsCombinedVals[!leadsCombinedVals %in% c(NA, "other")])
   
-  return(leadsCombined)
+  return(leadsCombinedVals)
 }
 
 # Functions for formatting popup details
@@ -188,6 +190,7 @@ server <- function(input, output) {
     
     # Read user inputs
     topicFilter <- input$selectTopics
+    piFilter <- input$selectPI
     
     # Filter projects dataframe based on user input
     if (length(topicFilter > 0)) {
@@ -195,6 +198,13 @@ server <- function(input, output) {
       projectsTopicFilter <- projects_sf[grep(paste(topicFilter, collapse="|"), projects_sf$topics),]
       projectsOtherTopicFilter <- projects_sf[grep(paste(topicFilter, collapse="|"), projects_sf$topics_other),]
       projects_sf <- rbind(projectsTopicFilter, projectsOtherTopicFilter)
+    }
+    
+    if (length(piFilter > 0)) {
+      # Filter by PI
+      projectsPIFilter <- projects_sf[grep(paste(piFilter, collapse="|"), projects_sf$projectLead),]
+      projectsOtherPIFilter <- projects_sf[grep(paste(piFilter, collapse="|"), projects_sf$projectLead_other),]
+      projects_sf <- rbind(projectsPIFilter, projectsOtherPIFilter)
     }
     
     # Pre-calculate the labels for each point
