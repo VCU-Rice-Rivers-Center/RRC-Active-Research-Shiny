@@ -187,6 +187,7 @@ server <- function(input, output) {
   
   # This observer is responsible for maintaining the markers + labels
   observe({
+    # Create copy of global df
     filtered_projects <- projects_sf
     
     # Read user inputs
@@ -251,7 +252,7 @@ server <- function(input, output) {
           )
         )
     } else {
-      leafletProxy("mymap") |>
+      leafletProxy("mymap", data=NULL) |>
         clearMarkers()
     }
     
