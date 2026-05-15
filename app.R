@@ -35,15 +35,18 @@ formatTopicsListUI <- function(projects) {
   topics <- unlist(lapply(projects$topics, function(x) { unlist(strsplit(x, ",")) }))
   topicsOther <- unlist(lapply(projects$topics_other, function(x) { unlist(strsplit(x, ",")) }))
   topicsOther <- unlist(lapply(topicsOther, function(x) { ifelse(str_count(x, " ") > 3, NA, x) }))
-  
+
   # Combine columns and format strings to user-facing 
-  topicsCombined <- unique(c(topics, topicsOther))
-  topicsCombined <- unlist(lapply(topicsCombined, function(x) { str_to_title(gsub('([[:upper:]])', ' \\1', x)) }))
+  topicsCombinedVals <- unique(c(topics, topicsOther))
+  topicsCombined <- unlist(lapply(topicsCombinedVals, function(x) { str_to_title(gsub('([[:upper:]])', ' \\1', x)) }))
+  
+  # Create named list
+  names(topicsCombinedVals) <- topicsCombined
   
   # Remove 'NA' and 'Other' from selection
-  topicsCombined <- sort(topicsCombined[!topicsCombined %in% c(NA, "Other")])
+  topicsCombinedVals <- sort(topicsCombinedVals[!topicsCombinedVals %in% c(NA, "other")])
   
-  return(topicsCombined)
+  return(topicsCombinedVals)
 }
 
 formatPIListUI <- function(projects) {
@@ -52,13 +55,16 @@ formatPIListUI <- function(projects) {
   leadsOther <- projects$projectLead_other
   
   # Combine columns and format strings to user-facing
-  leadsCombined <- unique(c(leads, leadsOther))
-  leadsCombined <- unlist(lapply(leadsCombined, function(x) { str_to_title(gsub('([[:upper:]])', ' \\1', x)) }))
+  leadsCombinedVals <- unique(c(leads, leadsOther))
+  leadsCombined <- unlist(lapply(leadsCombinedVals, function(x) { str_to_title(gsub('([[:upper:]])', ' \\1', x)) }))
+  
+  # Create named list
+  names(leadsCombinedVals) <- leadsCombined
   
   # Remove 'NA' and 'Other' from selection
-  leadsCombined <- sort(leadsCombined[!leadsCombined %in% c(NA, "Other")])
+  leadsCombinedVals <- sort(leadsCombinedVals[!leadsCombinedVals %in% c(NA, "other")])
   
-  return(leadsCombined)
+  return(leadsCombinedVals)
 }
 
 # Functions for formatting popup details
@@ -181,37 +187,76 @@ server <- function(input, output) {
   
   # This observer is responsible for maintaining the markers + labels
   observe({
-    # Pre-calculate the labels for each point
-    labels <- lapply(seq_len(nrow(projects_sf)), function(i) {
-      project <- projects_sf[i, ]
-      HTML(paste(
-        tags$span(style="color:#006894;font-weight:bold", "Project Title: "), str_to_title(as.character(project$projectTitle)), "<br/>",
-        tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(project)), "<br/>",
-        tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(project))
-      ))
-    })
+    # Create copy of global df
+    filtered_projects <- projects_sf
     
-    leafletProxy("mymap", data = projects_sf) |>
-      clearMarkers() |> # Good practice to clear before re-adding in an observer
-      addCircleMarkers(
-        layerId = ~globalid, 
-        color = "#FFB300", 
-        stroke = TRUE, 
-        opacity = 0.9, 
-        fillOpacity = 0.3,
-        label = labels, # Add the labels here
-        labelOptions = labelOptions(
-          style = list(
-            "font-weight" = "normal", 
-            "padding" = "8px",
-            "width" = "320px",      # Limits the width of the label
-            "white-space" = "normal",   # Allows text to wrap to the next line
-            "word-wrap" = "break-word"  # Ensures long words don't overflow
-          ),
-          textsize = "13px",
-          direction = "auto"
+    # Read user inputs
+    topicFilter <- input$selectTopics
+    piFilter <- input$selectPI
+    statusFilter <- input$selectStatus
+    
+    # Filter projects dataframe based on user input
+    if (length(topicFilter) > 0) {
+      # Filter by topic
+      projectsTopicFilter <- filtered_projects[grep(paste(topicFilter, collapse="|"), filtered_projects$topics),]
+      projectsOtherTopicFilter <- filtered_projects[grep(paste(topicFilter, collapse="|"), filtered_projects$topics_other),]
+      filtered_projects <- rbind(projectsTopicFilter, projectsOtherTopicFilter)
+    }
+    
+    if (length(piFilter) > 0) {
+      # Filter by PI
+      projectsPIFilter <- filtered_projects[grep(paste(piFilter, collapse="|"), filtered_projects$projectLead),]
+      projectsOtherPIFilter <- filtered_projects[grep(paste(piFilter, collapse="|"), filtered_projects$projectLead_other),]
+      filtered_projects <- rbind(projectsPIFilter, projectsOtherPIFilter)
+    }
+    
+    if (statusFilter == "In Progress") {
+      # Filter by status
+      currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
+      filtered_projects <- filtered_projects[(as.numeric(filtered_projects$yearStart) <= currentYear & as.numeric(filtered_projects$yearEnd) >= currentYear),]
+    } else if (statusFilter == "Complete") {
+      currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
+      filtered_projects <- filtered_projects[(as.numeric(filtered_projects$yearEnd) < currentYear),]
+    }
+    
+    if (nrow(filtered_projects) > 0) {
+      # Pre-calculate the labels for each point
+      labels <- lapply(seq_len(nrow(filtered_projects)), function(i) {
+        project <- filtered_projects[i, ]
+        HTML(paste(
+          tags$span(style="color:#006894;font-weight:bold", "Project Title: "), str_to_title(as.character(project$projectTitle)), "<br/>",
+          tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(project)), "<br/>",
+          tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(project))
+        ))
+      })
+      
+      leafletProxy("mymap", data = filtered_projects) |>
+        clearMarkers() |> # Good practice to clear before re-adding in an observer
+        addCircleMarkers(
+          layerId = ~globalid, 
+          color = "#FFB300", 
+          stroke = TRUE, 
+          opacity = 0.9, 
+          fillOpacity = 0.3,
+          label = labels, # Add the labels here
+          labelOptions = labelOptions(
+            style = list(
+              "font-weight" = "normal", 
+              "padding" = "8px",
+              "width" = "320px",      # Limits the width of the label
+              "white-space" = "normal",   # Allows text to wrap to the next line
+              "word-wrap" = "break-word"  # Ensures long words don't overflow
+            ),
+            textsize = "13px",
+            direction = "auto"
+          )
         )
-      )
+    } else {
+      leafletProxy("mymap", data=NULL) |>
+        clearMarkers()
+    }
+    
+  
   })
 
   # UI output for project details
