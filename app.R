@@ -187,6 +187,7 @@ server <- function(input, output) {
   
   # This observer is responsible for maintaining the markers + labels
   observe({
+    filtered_projects <- projects_sf
     
     # Read user inputs
     topicFilter <- input$selectTopics
@@ -194,33 +195,33 @@ server <- function(input, output) {
     statusFilter <- input$selectStatus
     
     # Filter projects dataframe based on user input
-    if (length(topicFilter > 0)) {
+    if (length(topicFilter) > 0) {
       # Filter by topic
-      projectsTopicFilter <- projects_sf[grep(paste(topicFilter, collapse="|"), projects_sf$topics),]
-      projectsOtherTopicFilter <- projects_sf[grep(paste(topicFilter, collapse="|"), projects_sf$topics_other),]
-      projects_sf <- rbind(projectsTopicFilter, projectsOtherTopicFilter)
+      projectsTopicFilter <- filtered_projects[grep(paste(topicFilter, collapse="|"), filtered_projects$topics),]
+      projectsOtherTopicFilter <- filtered_projects[grep(paste(topicFilter, collapse="|"), filtered_projects$topics_other),]
+      filtered_projects <- rbind(projectsTopicFilter, projectsOtherTopicFilter)
     }
     
-    if (length(piFilter > 0)) {
+    if (length(piFilter) > 0) {
       # Filter by PI
-      projectsPIFilter <- projects_sf[grep(paste(piFilter, collapse="|"), projects_sf$projectLead),]
-      projectsOtherPIFilter <- projects_sf[grep(paste(piFilter, collapse="|"), projects_sf$projectLead_other),]
-      projects_sf <- rbind(projectsPIFilter, projectsOtherPIFilter)
+      projectsPIFilter <- filtered_projects[grep(paste(piFilter, collapse="|"), filtered_projects$projectLead),]
+      projectsOtherPIFilter <- filtered_projects[grep(paste(piFilter, collapse="|"), filtered_projects$projectLead_other),]
+      filtered_projects <- rbind(projectsPIFilter, projectsOtherPIFilter)
     }
     
     if (statusFilter == "In Progress") {
       # Filter by status
       currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
-      projects_sf <- projects_sf[(as.numeric(projects_sf$yearStart) <= currentYear & as.numeric(projects_sf$yearEnd) >= currentYear),]
+      filtered_projects <- filtered_projects[(as.numeric(filtered_projects$yearStart) <= currentYear & as.numeric(filtered_projects$yearEnd) >= currentYear),]
     } else if (statusFilter == "Complete") {
       currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
-      projects_sf <- projects_sf[(as.numeric(projects_sf$yearEnd) < currentYear),]
+      filtered_projects <- filtered_projects[(as.numeric(filtered_projects$yearEnd) < currentYear),]
     }
     
-    if (nrow(projects_sf) > 0) {
+    if (nrow(filtered_projects) > 0) {
       # Pre-calculate the labels for each point
-      labels <- lapply(seq_len(nrow(projects_sf)), function(i) {
-        project <- projects_sf[i, ]
+      labels <- lapply(seq_len(nrow(filtered_projects)), function(i) {
+        project <- filtered_projects[i, ]
         HTML(paste(
           tags$span(style="color:#006894;font-weight:bold", "Project Title: "), str_to_title(as.character(project$projectTitle)), "<br/>",
           tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(project)), "<br/>",
@@ -228,7 +229,7 @@ server <- function(input, output) {
         ))
       })
       
-      leafletProxy("mymap", data = projects_sf) |>
+      leafletProxy("mymap", data = filtered_projects) |>
         clearMarkers() |> # Good practice to clear before re-adding in an observer
         addCircleMarkers(
           layerId = ~globalid, 
