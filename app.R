@@ -154,6 +154,8 @@ ui <- page_navbar(
                     selected = "Any Status")
   ),
   
+  navbar_options = navbar_options(position="static-top", bg="#006894"),
+  
   
   nav_panel(
     title = "Map Explorer", 
@@ -182,6 +184,8 @@ ui <- page_navbar(
   
   nav_panel(title = "Table View", 
             DT::dataTableOutput("projectDT"))
+  
+
 
 )
 
@@ -366,8 +370,8 @@ server <- function(input, output) {
                                          yearEnd = character())
     }
     
+    # DT Output
     output$projectDT <- DT::renderDataTable({
-      # Output
       cNames <- c("Project Title", "PI", "Project Associates", "Topics", "Start Year", "End Year")
       DT::datatable(filtered_projects_df, colnames = cNames)
     })
