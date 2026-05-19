@@ -29,6 +29,9 @@ aoi_sf <- st_read(aoi_url) |>
 aoi_bbox <- st_bbox(aoi_sf) |>
   as.vector()
 
+## Map Center point
+point <- c(median(c(aoi_bbox[1], aoi_bbox[3])), median(c(aoi_bbox[2], aoi_bbox[4])))
+
 # Functions for formatting UI inputs
 formatTopicsListUI <- function(projects) {
   # Pull topics entered for existing projects
@@ -89,7 +92,7 @@ formatProjectAssociates <- function(project) {
   associatesCombined <- unlist(lapply(associatesCombined, function(x) { gsub('([[:upper:]])', ' \\1', x) }))
   
   # Remove 'NA' and 'Other' from selection
-  associatesCombined <- sort(associatesCombined[!associatesCombined %in% c(NA, "Other")])
+  associatesCombined <- sort(associatesCombined[!associatesCombined %in% c(NA, "other")])
   
   # Format character string
   if (length(associatesCombined) == 0) {
@@ -137,7 +140,7 @@ formatStatus <- function(project) {
 ### Shiny UI ###
 
 
-ui <- page_sidebar(
+ui <- page_navbar(
   title = "Rice Rivers Center - Project Viewer",
   
   sidebar = sidebar(
@@ -151,25 +154,41 @@ ui <- page_sidebar(
                     selected = "Any Status")
   ),
   
-  div(
+  navbar_options = navbar_options(position="static-top", bg="#006894"),
+  
+  
+  nav_panel(
+    title = "Map Explorer", 
+    fillable = TRUE, # <-- This tells the panel to let its children fill the height
+    
+    div(
+      style = "position: relative; height: 100%; width: 100%;", # Ensures wrapper takes full space
       
       tags$head(
-        # Include our custom CSS
         includeCSS("styles.css")
       ),
       
-  tags$style(type = "text/css", "#mymap {height: calc(100vh - 80px) !important;}"),
-  leafletOutput("mymap"), 
-  absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
-                draggable = TRUE, top = 120, left = "auto", right = 70, bottom = "auto",
-                width = 400, height = "80%",
-                
-                h2("Project Details"),
-                
-                uiOutput(outputId= "projectDetails")
-  )
-  )
+      # Use height="100%" instead of 100vh
+      leafletOutput("mymap", height = "100%"), 
+      
+      absolutePanel(
+        id = "controls", class = "panel panel-default", fixed = TRUE,
+        draggable = TRUE, top = 120, left = "auto", right = 70, bottom = "auto",
+        width = 400, height = "80%",
+        
+        h2("Project Details"),
+        uiOutput(outputId = "projectDetails")
+      )
+    )
+  ),
+  
+  nav_panel(title = "Table View", 
+            DT::dataTableOutput("projectDT"))
+  
+
+
 )
+
 
 server <- function(input, output) {
   
@@ -290,7 +309,73 @@ server <- function(input, output) {
     
     p(content)
   })
+  
+  ## Data Table #############
+  
+  # Initialize data table:
+  # filtered_projects_df <- NULL
+    
+  # This observer is responsible for maintaining the datatable
+  observe({
+    # Create copy of global df
+    filtered_projects_df <- projects_sf
+    
+    # Read user inputs
+    topicFilter <- input$selectTopics
+    piFilter <- input$selectPI
+    statusFilter <- input$selectStatus
+    
+    # Filter projects dataframe based on user input
+    if (length(topicFilter) > 0) {
+      # Filter by topic
+      projectsTopicFilter <- filtered_projects_df[grep(paste(topicFilter, collapse="|"), filtered_projects_df$topics),]
+      projectsOtherTopicFilter <- filtered_projects_df[grep(paste(topicFilter, collapse="|"), filtered_projects_df$topics_other),]
+      filtered_projects_df <- rbind(projectsTopicFilter, projectsOtherTopicFilter)
+    }
+    
+    if (length(piFilter) > 0) {
+      # Filter by PI
+      projectsPIFilter <- filtered_projects_df[grep(paste(piFilter, collapse="|"), filtered_projects_df$projectLead),]
+      projectsOtherPIFilter <- filtered_projects_df[grep(paste(piFilter, collapse="|"), filtered_projects_df$projectLead_other),]
+      filtered_projects_df <- rbind(projectsPIFilter, projectsOtherPIFilter)
+    }
+    
+    if (statusFilter == "In Progress") {
+      # Filter by status
+      currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
+      filtered_projects_df <- filtered_projects_df[(as.numeric(filtered_projects_df$yearStart) <= currentYear & as.numeric(filtered_projects_df$yearEnd) >= currentYear),]
+    } else if (statusFilter == "Complete") {
+      currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
+      filtered_projects_df <- filtered_projects_df[(as.numeric(filtered_projects_df$yearEnd) < currentYear),]
+    }
+    
+    if (nrow(filtered_projects_df) > 0) {
+      # Formatted columns
+      filtered_projects_df$titleFormat <- str_to_title(filtered_projects_df$projectTitle)
+      filtered_projects_df$leadFormat <- apply(filtered_projects_df, 1, formatProjectLead)
+      filtered_projects_df$associatesFormat <- apply(filtered_projects_df, 1, formatProjectAssociates)
+      filtered_projects_df$topicsFormat<- apply(filtered_projects_df, 1, formatTopics)
+      
+      # Select columns to keep
+      filtered_projects_df <- as.data.frame(filtered_projects_df)
+      filtered_projects_df <- filtered_projects_df[, c("titleFormat", "leadFormat", "associatesFormat", "topicsFormat", "yearStart", "yearEnd")]
 
+    } else {
+      # Empty df if no results  returned
+      filtered_projects_df <- data.frame(titleFormat = character(),
+                                         leadFormat = character(),
+                                         associatesFormat = character(), 
+                                         topicsFormat = character(), 
+                                         yearStart = character(),
+                                         yearEnd = character())
+    }
+    
+    # DT Output
+    output$projectDT <- DT::renderDataTable({
+      cNames <- c("Project Title", "PI", "Project Associates", "Topics", "Start Year", "End Year")
+      DT::datatable(filtered_projects_df, colnames = cNames)
+    })
+  })
 }
 
 shinyApp(ui = ui, server = server)
