@@ -7,6 +7,7 @@ library(bslib)
 library(stringr)
 library(htmltools)
 library(rsconnect)
+library(DT)
 
 ### Initialization ###
 
