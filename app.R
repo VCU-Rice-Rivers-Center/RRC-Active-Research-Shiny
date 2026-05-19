@@ -29,6 +29,9 @@ aoi_sf <- st_read(aoi_url) |>
 aoi_bbox <- st_bbox(aoi_sf) |>
   as.vector()
 
+## Map Center point
+point <- c(median(c(aoi_bbox[1], aoi_bbox[3])), median(c(aoi_bbox[2], aoi_bbox[4])))
+
 # Functions for formatting UI inputs
 formatTopicsListUI <- function(projects) {
   # Pull topics entered for existing projects
@@ -303,12 +306,72 @@ server <- function(input, output) {
     p(content)
   })
   
-  output$projectDT <- DT::renderDataTable({
-    df <- projects_sf
+  ## Data Table #############
+  
+  # Initialize data table:
+  # filtered_projects_df <- NULL
     
-    DT::datatable(df)
-  })
+  # This observer is responsible for maintaining the datatable
+  observe({
+    # Create copy of global df
+    filtered_projects_df <- projects_sf
+    
+    # Read user inputs
+    topicFilter <- input$selectTopics
+    piFilter <- input$selectPI
+    statusFilter <- input$selectStatus
+    
+    # Filter projects dataframe based on user input
+    if (length(topicFilter) > 0) {
+      # Filter by topic
+      projectsTopicFilter <- filtered_projects_df[grep(paste(topicFilter, collapse="|"), filtered_projects_df$topics),]
+      projectsOtherTopicFilter <- filtered_projects_df[grep(paste(topicFilter, collapse="|"), filtered_projects_df$topics_other),]
+      filtered_projects_df <- rbind(projectsTopicFilter, projectsOtherTopicFilter)
+    }
+    
+    if (length(piFilter) > 0) {
+      # Filter by PI
+      projectsPIFilter <- filtered_projects_df[grep(paste(piFilter, collapse="|"), filtered_projects_df$projectLead),]
+      projectsOtherPIFilter <- filtered_projects_df[grep(paste(piFilter, collapse="|"), filtered_projects_df$projectLead_other),]
+      filtered_projects_df <- rbind(projectsPIFilter, projectsOtherPIFilter)
+    }
+    
+    if (statusFilter == "In Progress") {
+      # Filter by status
+      currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
+      filtered_projects_df <- filtered_projects_df[(as.numeric(filtered_projects_df$yearStart) <= currentYear & as.numeric(filtered_projects_df$yearEnd) >= currentYear),]
+    } else if (statusFilter == "Complete") {
+      currentYear <- as.numeric(format(as.Date(Sys.Date(), format = "%Y-%m-%d"), "%Y")) # Current year
+      filtered_projects_df <- filtered_projects_df[(as.numeric(filtered_projects_df$yearEnd) < currentYear),]
+    }
+    
+    if (nrow(filtered_projects_df) > 0) {
+      # Formatted columns
+      filtered_projects_df$titleFormat <- str_to_title(filtered_projects_df$projectTitle)
+      filtered_projects_df$leadFormat <- apply(filtered_projects_df, 1, formatProjectLead)
+      filtered_projects_df$associatesFormat <- apply(filtered_projects_df, 1, formatProjectAssociates)
+      filtered_projects_df$topicsFormat<- apply(filtered_projects_df, 1, formatTopics)
+      
+      # Select columns to keep
+      filtered_projects_df <- as.data.frame(filtered_projects_df)
+      filtered_projects_df <- filtered_projects_df[, c("titleFormat", "leadFormat", "associatesFormat", "topicsFormat", "yearStart", "yearEnd")]
 
+    } else {
+      # Empty df if no results  returned
+      filtered_projects_df <- data.frame(titleFormat = character(),
+                                         leadFormat = character(),
+                                         associatesFormat = character(), 
+                                         topicsFormat = character(), 
+                                         yearStart = character(),
+                                         yearEnd = character())
+    }
+    
+    output$projectDT <- DT::renderDataTable({
+      # Output
+      cNames <- c("Project Title", "PI", "Project Associates", "Topics", "Start Year", "End Year")
+      DT::datatable(filtered_projects_df, colnames = cNames)
+    })
+  })
 }
 
 shinyApp(ui = ui, server = server)
