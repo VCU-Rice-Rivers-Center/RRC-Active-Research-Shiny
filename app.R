@@ -89,7 +89,7 @@ formatProjectAssociates <- function(project) {
   associatesCombined <- unlist(lapply(associatesCombined, function(x) { gsub('([[:upper:]])', ' \\1', x) }))
   
   # Remove 'NA' and 'Other' from selection
-  associatesCombined <- sort(associatesCombined[!associatesCombined %in% c(NA, "Other")])
+  associatesCombined <- sort(associatesCombined[!associatesCombined %in% c(NA, "other")])
   
   # Format character string
   if (length(associatesCombined) == 0) {
@@ -137,7 +137,7 @@ formatStatus <- function(project) {
 ### Shiny UI ###
 
 
-ui <- page_sidebar(
+ui <- page_navbar(
   title = "Rice Rivers Center - Project Viewer",
   
   sidebar = sidebar(
@@ -151,25 +151,37 @@ ui <- page_sidebar(
                     selected = "Any Status")
   ),
   
-  div(
+  
+  nav_panel(
+    title = "Map Explorer", 
+    fillable = TRUE, # <-- This tells the panel to let its children fill the height
+    
+    div(
+      style = "position: relative; height: 100%; width: 100%;", # Ensures wrapper takes full space
       
       tags$head(
-        # Include our custom CSS
         includeCSS("styles.css")
       ),
       
-  tags$style(type = "text/css", "#mymap {height: calc(100vh - 80px) !important;}"),
-  leafletOutput("mymap"), 
-  absolutePanel(id = "controls", class = "panel panel-default", fixed = TRUE,
-                draggable = TRUE, top = 120, left = "auto", right = 70, bottom = "auto",
-                width = 400, height = "80%",
-                
-                h2("Project Details"),
-                
-                uiOutput(outputId= "projectDetails")
-  )
-  )
+      # Use height="100%" instead of 100vh
+      leafletOutput("mymap", height = "100%"), 
+      
+      absolutePanel(
+        id = "controls", class = "panel panel-default", fixed = TRUE,
+        draggable = TRUE, top = 120, left = "auto", right = 70, bottom = "auto",
+        width = 400, height = "80%",
+        
+        h2("Project Details"),
+        uiOutput(outputId = "projectDetails")
+      )
+    )
+  ),
+  
+  nav_panel(title = "Table View", 
+            DT::dataTableOutput("projectDT"))
+
 )
+
 
 server <- function(input, output) {
   
@@ -289,6 +301,12 @@ server <- function(input, output) {
     )
     
     p(content)
+  })
+  
+  output$projectDT <- DT::renderDataTable({
+    df <- projects_sf
+    
+    DT::datatable(df)
   })
 
 }
