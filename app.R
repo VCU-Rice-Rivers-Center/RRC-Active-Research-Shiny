@@ -144,6 +144,11 @@ formatStatus <- function(project) {
 ui <- page_navbar(
   title = "Rice Rivers Center - Project Viewer",
   
+  # 2. Inject your CSS file cleanly via the header
+  header = tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "styles.css")
+  ),
+  
   sidebar = sidebar(
     title = "Map Filters",
     selectInput(inputId = "selectTopics", label = "Filter by Topics: ",
@@ -165,17 +170,17 @@ ui <- page_navbar(
     div(
       style = "position: relative; height: 100%; width: 100%;", # Ensures wrapper takes full space
       
-      tags$head(
-        includeCSS("styles.css")
-      ),
+      # tags$head(
+      #   tags$link(rel="stylesheet", href="styles.css")
+      #   # includeCSS("www/styles.css")
+      # ),
       
       # Use height="100%" instead of 100vh
       leafletOutput("mymap", height = "100%"), 
       
       absolutePanel(
         id = "controls", class = "panel panel-default", fixed = TRUE,
-        draggable = TRUE, top = 120, left = "auto", right = 70, bottom = "auto",
-        width = 400, height = "80%",
+        draggable = TRUE, top = 120, left = "auto", right = 70, bottom = "auto", height = "80%",
         
         h2("Project Details"),
         uiOutput(outputId = "projectDetails")
