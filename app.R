@@ -142,17 +142,12 @@ formatStatus <- function(project) {
 
 ui <- page_navbar(
   theme = bs_theme(
-    bootswatch = "lux", 
+    bootswatch = "yeti", 
     version = 5,
     base_font = font_google("Roboto")
   ),
   
   title = "RRC Project Viewer",
-  
-  # Clean CSS injection via header
-  header = tags$head(
-    tags$link(rel = "stylesheet", type = "text/css", href = "styles.css")
-  ),
   
   # Sidebar using standard, reliable settings
   sidebar = sidebar(
