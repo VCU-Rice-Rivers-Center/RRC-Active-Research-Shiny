@@ -1,0 +1,36 @@
+input[type="number"] {
+  max-width: 80%;
+}
+
+div.outer {
+  position: fixed;
+  top: 41px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  padding: 0;
+}
+
+
+#controls {
+  /* Appearance */
+  background-color: white;
+  padding: 20px 20px 20px 20px;
+  overflow: auto;
+  cursor: move;
+  /* Fade out while not hovering */
+  opacity: 0.95;
+  zoom: 0.9;
+  transition: opacity 500ms 1s;
+}
+
+
+#controls {
+  width: 400px;
+}
+
+
+
+/* class="panel panel-default draggable ui-draggable ui-draggable-handle" 
+<div class="panel panel-default draggable ui-draggable ui-draggable-handle" id="controls" style="inset: 27.6px 70px auto 621.4px; width: 400px; height: 80%; position: fixed; cursor: move;"> <h2>Project Details</h2> <div id="projectDetails" class="shiny-html-output shiny-bound-output" aria-live="polite"><p>Click a marker to see details.</p></div> </div>*/
