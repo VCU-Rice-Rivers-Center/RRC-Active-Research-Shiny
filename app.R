@@ -140,63 +140,106 @@ formatStatus <- function(project) {
 
 ### Shiny UI ###
 
-
 ui <- page_navbar(
-  title = "Rice Rivers Center - Project Viewer",
+  theme = bs_theme(
+    bootswatch = "lux", 
+    version = 5,
+    base_font = font_google("Roboto")
+  ),
   
-  # 2. Inject your CSS file cleanly via the header
+  title = "RRC Project Viewer",
+  
+  # Clean CSS injection via header
   header = tags$head(
     tags$link(rel = "stylesheet", type = "text/css", href = "styles.css")
   ),
   
+  # Sidebar using standard, reliable settings
   sidebar = sidebar(
     title = "Map Filters",
+    open = "closed",
+    # Simply listing the inputs here is standard and highly mobile-responsive.
+    # On mobile, bslib natively collapses this into a top toggle strip.
     selectInput(inputId = "selectTopics", label = "Filter by Topics: ",
-                   choices = formatTopicsListUI(projects_sf), multiple = TRUE),
+                choices = formatTopicsListUI(projects_sf), multiple = TRUE),
+    
     selectInput(inputId = "selectPI", label = "Filter by PI: ", 
-                    choices = formatPIListUI(projects_sf), multiple = TRUE),
+                choices = formatPIListUI(projects_sf), multiple = TRUE),
+    
     selectInput(inputId = "selectStatus", label = "Filter by Status: ",
-                    choices = c("In Progress", "Complete", "Any Status"),
-                    selected = "Any Status")
+                choices = c("In Progress", "Complete", "Any Status"),
+                selected = "Any Status")
   ),
   
-  navbar_options = navbar_options(position="static-top", bg="#006894"),
-  
-  
+  # Map Explorer Panel
   nav_panel(
     title = "Map Explorer", 
-    fillable = TRUE, # <-- This tells the panel to let its children fill the height
     
-    div(
-      style = "position: relative; height: 100%; width: 100%;", # Ensures wrapper takes full space
-      
-      # tags$head(
-      #   tags$link(rel="stylesheet", href="styles.css")
-      #   # includeCSS("www/styles.css")
-      # ),
-      
-      # Use height="100%" instead of 100vh
-      leafletOutput("mymap", height = "100%"), 
-      
-      absolutePanel(
-        id = "controls", class = "panel panel-default", fixed = TRUE,
-        draggable = TRUE, top = 120, left = "auto", right = 70, bottom = "auto", height = "80%",
+    # Grid Row: Spacing utility 'g-3' adds clean gaps between columns
+    div(class = "row g-3",
         
-        h2("Project Details"),
-        uiOutput(outputId = "projectDetails")
-      )
+        # COLUMN 1: The Map
+        # 'col-12' means full width on mobile. 'col-lg-7' means 7/12 width on desktops.
+        div(class = "col-12 col-lg-7",
+            card(
+              style = "height: 550px; padding: 0;", # Consistent height across devices
+              leafletOutput("mymap", height = "100%")
+            )
+        ),
+        
+        # COLUMN 2: The Details Pane (No longer floating!)
+        # 'col-12' means full width on mobile (below map). 'col-lg-5' means 5/12 width on desktops.
+        div(class = "col-12 col-lg-5",
+            card(
+              style = "height: 550px; overflow-y: auto;", # Scrollable if text is long
+              class = "shadow-sm",
+              
+              card_header(
+                class = "bg-light",
+                h4("Project Details", class = "mb-0", style = "font-weight: 600;")
+              ),
+              
+              card_body(
+                uiOutput(outputId = "projectDetails")
+              )
+            )
+        )
     )
   ),
   
-  nav_panel(title = "Table View", 
-            DT::dataTableOutput("projectDT"))
-  
-
-
+  # Table View Panel
+  nav_panel(
+    title = "Table View", 
+    card(
+      DT::dataTableOutput("projectDT")
+    )
+  )
 )
 
 
 server <- function(input, output) {
+  
+  # Trigger the modal on app startup
+  showModal(modalDialog(
+    title = "Welcome to the RRC Project Viewer",
+    tagList(
+      p("This is an interactive application for exploring research projects at the Rice Rivers
+      Center. This pop-up outlines different ways to interact with the application."),
+      p("The navigation bar at the top allows you to view the data from a map of Rice or from a table."),
+      h5("Map View"),
+      p("With the map view, hover over different points to get an overview of the project. Selecting
+        a point will populate the Project Details pane with more information about the project."),
+      h5("Table View"),
+      p("With the table view, all projects are listed in one table. You can sort by different columns or
+        search for keywords or names using the searchbar in the top right corner"),
+      h5("Additional Filters"),
+      p("To filter the map and table elements by project status, PI, or project topics, you can toggle open
+        the sidebar located on the left side of the screen.")
+      
+    ),
+    easyClose = TRUE,
+    footer = modalButton("Dismiss")
+  ))
   
   # Offset for map
   bbox_offset = 0.005
@@ -205,7 +248,9 @@ server <- function(input, output) {
   output$mymap <- renderLeaflet({
     leaflet() |>
       addProviderTiles(providers$Esri.WorldImagery) |>
-      fitBounds(aoi_bbox[1] + bbox_offset, aoi_bbox[2], aoi_bbox[3] + bbox_offset, aoi_bbox[4]) |>
+      # fitBounds(aoi_bbox[1] + bbox_offset, aoi_bbox[2], aoi_bbox[3] + bbox_offset, aoi_bbox[4]) |>
+      fitBounds(aoi_bbox[1], aoi_bbox[2], aoi_bbox[3], aoi_bbox[4]) |>
+      
       addPolygons(data = aoi_sf, color = "#006894", opacity = 0.8, fillOpacity = 0) 
       
   })
@@ -294,22 +339,18 @@ server <- function(input, output) {
     
     content <- tagList(
       tags$h4(str_to_title(as.character(selectedProject$projectTitle))),
-      tags$hr(),
+      #tags$hr(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Topics: "), as.character(formatTopics(selectedProject)))),
-      tags$br(),
       tags$br(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "PI: "), as.character(formatProjectLead(selectedProject)))),
       tags$br(),
-      tags$br(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Associates: "), as.character(formatProjectAssociates(selectedProject)))),
-      tags$br(),
       tags$br(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Objectives: "), selectedProject$projectObjectives)),
       tags$br(),
-      tags$br(),
-      HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Methods: "), selectedProject$projectMethods)),
-      tags$br(),
-      tags$br(),
+      # HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Project Methods: "), selectedProject$projectMethods)),
+      # tags$br(),
+      # tags$br(),
       HTML(paste(tags$span(style="color:#006894;font-weight:bold", "Status: "), as.character(formatStatus(selectedProject))))
     )
     

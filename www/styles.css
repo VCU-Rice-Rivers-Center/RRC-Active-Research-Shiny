@@ -12,16 +12,6 @@ div.outer {
   padding: 0;
 }
 
-/* Get a fancy font from Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
-
-/* Customize fonts */
-* { font-family: Roboto; }
-
-h1, h2, h3 { 
-  font-weight: 400; 
-  color: #006894;
-}
 
 #controls {
   /* Appearance */
@@ -38,20 +28,6 @@ h1, h2, h3 {
 
 #controls {
   width: 400px;
-}
-
-
-
-/*@media screen and (min-width: 400px) {
-  .panel.panel-default {
-    width: 200px;
-  }
-}*/
-
-@media screen and (max-width: 800px) {
-  #controls {
-    width: 200px;
-  }
 }
 
 
