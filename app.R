@@ -21,6 +21,10 @@ f_layer <- arc_open(f_url)
 projects <- get_layer(f_layer, id=0)
 projects_sf <- arc_select(projects)
 
+# Filter only to projects which approved their information being displayed in RRC communications
+projects_sf <- projects_sf %>%
+  dplyr::filter(publicInfoAgreement == "yes" | is.na(publicInfoAgreement))
+
 # RRC Boundary File
 aoi_url <- "data/RRC_ROI.shp"
 aoi_sf <- st_read(aoi_url) |>
