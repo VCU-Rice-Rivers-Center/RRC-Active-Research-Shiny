@@ -8,7 +8,6 @@ library(stringr)
 library(htmltools)
 library(rsconnect)
 library(DT)
-library(dplyr)
 
 ### Initialization ###
 
