@@ -10,34 +10,6 @@ library(rsconnect)
 library(DT)
 library(dplyr)
 
-### Initialization ###
-
-# Feature Layer url
-f_url <- "https://services1.arcgis.com/acqg5b8xOcwTUl4z/arcgis/rest/services/RiceRiversCenter_ProjectRegistration_V2_Public_View/FeatureServer"
-
-# Open feature layer (this contains the metadata for the layer)
-f_layer <- arc_open(f_url)
-
-# Read the data
-projects <- get_layer(f_layer, id=0)
-projects_sf <- arc_select(projects)
-
-# Filter only to projects which approved their information being displayed in RRC communications
-projects_sf <- projects_sf %>%
-  dplyr::filter(publicInfoAgreement == "yes" | is.na(publicInfoAgreement))
-
-# RRC Boundary File
-aoi_url <- "data/RRC_ROI.shp"
-aoi_sf <- st_read(aoi_url) |>
-  st_transform(crs = 4326)
-
-# RRC Bounding Box
-aoi_bbox <- st_bbox(aoi_sf) |>
-  as.vector()
-
-## Map Center point
-point <- c(median(c(aoi_bbox[1], aoi_bbox[3])), median(c(aoi_bbox[2], aoi_bbox[4])))
-
 # Functions for formatting UI inputs
 formatTopicsListUI <- function(projects) {
   # Pull topics entered for existing projects
@@ -218,6 +190,34 @@ ui <- page_navbar(
 
 
 server <- function(input, output) {
+  
+  ### Initialization ###
+  
+  # Feature Layer url
+  f_url <- "https://services1.arcgis.com/acqg5b8xOcwTUl4z/arcgis/rest/services/RiceRiversCenter_ProjectRegistration_V2_Public_View/FeatureServer"
+  
+  # Open feature layer (this contains the metadata for the layer)
+  f_layer <- arc_open(f_url)
+  
+  # Read the data
+  projects <- get_layer(f_layer, id=0)
+  projects_sf <- arc_select(projects)
+  
+  # Filter only to projects which approved their information being displayed in RRC communications
+  projects_sf <- projects_sf %>%
+    dplyr::filter(publicInfoAgreement == "yes" | is.na(publicInfoAgreement))
+  
+  # RRC Boundary File
+  aoi_url <- "data/RRC_ROI.shp"
+  aoi_sf <- st_read(aoi_url) |>
+    st_transform(crs = 4326)
+  
+  # RRC Bounding Box
+  aoi_bbox <- st_bbox(aoi_sf) |>
+    as.vector()
+  
+  ## Map Center point
+  point <- c(median(c(aoi_bbox[1], aoi_bbox[3])), median(c(aoi_bbox[2], aoi_bbox[4])))
   
   # Trigger the modal on app startup
   showModal(modalDialog(
